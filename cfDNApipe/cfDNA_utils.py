@@ -139,6 +139,7 @@ def bamTobed(bamInput=None, bedOutput=None, fragFilter=False, minLen=None, maxLe
     bedWrite = open(tmp_bedOutput, "w")
 
     input_file = pysam.Samfile(bamInput, "rb")
+
     chr_reference = input_file.references
     for read1, read2 in read_pair_generator(input_file):
         read1Start = read1.reference_start
@@ -160,8 +161,16 @@ def bamTobed(bamInput=None, bedOutput=None, fragFilter=False, minLen=None, maxLe
             readLen = rend - rstart
             if (readLen <= minLen) or (readLen >= maxLen):
                 continue
+        
+        if (read1.mapping_quality != read2.mapping_quality):
+            if (read1.mapping_quality > read2.mapping_quality):
+                mapq = read2.mapping_quality
+            if (read2.mapping_quality > read1.mapping_quality):
+                mapq = read1.mapping_quality
+        else:
+            mapq = read1.mapping_quality
 
-        tmp_str = chr_reference[read1.tid] + "\t" + str(rstart) + "\t" + str(rend) + "\n"
+        tmp_str = chr_reference[read1.tid] + "\t" + str(rstart) + "\t" + str(rend) + "\t" + str(mapq)+ "\n"
         bedWrite.write(tmp_str)
 
     bedWrite.close()

@@ -27,6 +27,7 @@ class bowtie2(StepBase):
         stepNum=None,
         upstream=None,
         verbose=True,
+        finaleDB=False,
         **kwargs
     ):
         """
@@ -49,6 +50,7 @@ class bowtie2(StepBase):
             upstream: upstream output results, used for pipeline. This parameter can be True, which means a new pipeline start.
             verbose: bool, True means print all stdout, but will be slow; False means black stdout verbose, much faster.
         """
+
 
         super(bowtie2, self).__init__(stepNum, upstream)
 
@@ -124,8 +126,8 @@ class bowtie2(StepBase):
             else:
                 self.setParam("other_params", other_params)
 
-            self.setParam(
-                "unmapped", [x + ".unmapped.gz" for x in self.getParam("outPrefix")]
+            self.setOutput(
+                "bamOutput", [x + ".bam" for x in self.getParam("outPrefix")]
             )
             self.setOutput(
                 "unmapped-1", [x + ".unmapped.1.gz" for x in self.getParam("outPrefix")]
@@ -136,7 +138,18 @@ class bowtie2(StepBase):
             self.setOutput(
                 "bamOutput", [x + ".bam" for x in self.getParam("outPrefix")]
             )
+            self.setOutput(
+                "unmapbamOutput", [x + "-unmap.2bam" for x in self.getParam("outPrefix")]
+            )
 
+            self.setOutput(
+                "sortumbamOutput", [x + "-unmap-sort.bam" for x in self.getParam("outPrefix")]
+            )
+
+            self.setOutput(
+                "bedout", [x + ".bed" for x in self.getParam("outPrefix")]
+            )
+            
             if len(self.getInput("seq1")) == len(self.getInput("seq2")):
                 multi_run_len = len(self.getInput("seq1"))
             else:
@@ -144,30 +157,86 @@ class bowtie2(StepBase):
 
             all_cmd = []
 
+            perl_script = """perl -ne 'chomp;@f=split " ";if($f[0] ne $f[3]){{next;}}$s=$f[1];$e=$f[5];if($f[8] eq "-"){{$s=$f[4];$e=$f[2];}}if($e>$s){{print "$f[0]\\t$s\\t$e\\t.\\t$f[7]\\t$f[8]\\n";}}' | """
+
+            #perl_script = """perl -ne 'chomp;@f=split " ";if($f[0] ne $f[3]){{next;}}$s=$f[1];$e=$f[5];if($f[8] eq "-"){{$s=$f[4];$e=$f[2];}}if($e>$s){{print "$f[0]\\t$s\\t$e\\t$f[6]\\t$f[7]\\t$f[8]\\n";}}' | """
+
             for i in range(multi_run_len):
                 tmp_cmd = self.cmdCreate(
                     [
-                        "bowtie2",
-                        "-x",
-                        self.getParam("ref"),
-                        "-1",
+                        "bwa mem",
+                        "-t",
+                        self.getParam("threads"),
+                        "/mnt/sas/ref/hg19/v0/Homo_sapiens_assembly19.fasta",
                         self.getInput("seq1")[i],
-                        "-2",
                         self.getInput("seq2")[i],
-                        self.getParam("other_params"),
-                        "--un-conc-gz",
-                        self.getParam("unmapped")[i],
-                        "-p",
-                        self.getParam("threads"),
                         "|",
-                        "samtools view -b -S -@",
+                        "samblaster",
+                        "|",
+                        "samtools view -b",
+                        "-@",
                         self.getParam("threads"),
-                        "-o",
-                        self.getOutput("bamOutput")[i],
                         "-",
+                        ">",
+                        self.getOutput("bamOutput")[i],
+
+                    ]
+
+                )
+                tmp_cmd2 = self.cmdCreate(
+                    [
+                        "samtools view -b -f 4",
+                        self.getOutput("bamOutput")[i], 
+                        ">",
+                        self.getOutput("unmapbamOutput")[i],
+
                     ]
                 )
+                tmp_cmd3 = self.cmdCreate(
+                    [
+                        "samtools sort",
+                        "-n",
+                        self.getOutput("unmapbamOutput")[i],
+                        "-o",
+                        self.getOutput("sortumbamOutput")[i], 
+                    ]
+                )
+                tmp_cmd4 = self.cmdCreate(
+                    [
+                        "bedtools bamtofastq",
+                        "-i",
+                        self.getOutput("sortumbamOutput")[i],  
+                        "-fq",
+                        self.getOutput("unmapped-1")[i],  
+                        "-fq2",
+                        self.getOutput("unmapped-2")[i],  
+                    ]
+                )
+                
+                tmp_cmd6 = self.cmdCreate(
+                    [
+                        "samtools view -h -f 3 -F 3852 -q 30",
+                        self.getOutput("bamOutput")[i],
+                        "|",
+                        "bamToBed -bedpe -mate1 -i stdin",
+                        "|",
+                        perl_script,
+                        "sort-bed --max-mem 32G",
+                        "-",
+                        ">",
+                        self.getOutput("bedout")[i],
+                    ]
+                )
+
+
                 all_cmd.append(tmp_cmd)
+                all_cmd.append(tmp_cmd2)
+                all_cmd.append(tmp_cmd3)
+                all_cmd.append(tmp_cmd4)
+                all_cmd.append(tmp_cmd6)
+                
+
+
 
         elif self.getParam("type") == "single":
             self.setParam(

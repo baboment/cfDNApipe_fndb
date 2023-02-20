@@ -63,7 +63,7 @@ def cfDNAWGS(
     report=False,
     verbose=False,
     box=True,
-):
+    ):
     """
     This function is used for processing paired/single end WGBS data.
     Note: User must set Configure or pipeConfigure before using.
@@ -118,7 +118,7 @@ def cfDNAWGS(
              otherwise, the results will be saved as dict.
     """
 
-    logoPrint(mess="WGS Pipeline")
+    logoPrint(mess="WGS Pipeline Woi!!!")
 
     time.sleep(3)
 
@@ -149,7 +149,7 @@ def cfDNAWGS(
             results.update(
                 {"identifyAdapter": res_identifyAdapter, "adapterremoval": res_adapterremoval,}
             )
-        else:
+        else: 
             res_adapterremoval = adapterremoval(
                 upstream=res_inputprocess, adapter1=adapter1, adapter2=adapter2, other_params=rmAdOP, verbose=verbose,
             )

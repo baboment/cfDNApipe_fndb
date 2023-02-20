@@ -86,7 +86,8 @@ class rmduplicate(StepBase):
                 for x in self.getInput("bamInput")
             ],
         )
-        self.setOutput("baiOutput", [x + ".bai" for x in self.getOutput("bamOutput")])
+
+    
         self.setOutput(
             "metricsOutput",
             [
@@ -130,8 +131,10 @@ class rmduplicate(StepBase):
                 ]
             )
 
+
             cmd_step1.append(cmd1)
             cmd_step2.append(cmd2)
+
 
         finishFlag = self.stepInit(upstream)
 
@@ -139,6 +142,7 @@ class rmduplicate(StepBase):
             if verbose:
                 self.run(cmd_step1)
                 self.run(cmd_step2)
+
             else:
                 self.multiRun(
                     args=cmd_step1,
@@ -151,4 +155,6 @@ class rmduplicate(StepBase):
                     nCore=maxCore(math.ceil(self.getParam("threads") / 4)),
                 )
 
+
         self.stepInfoRec(cmds=[cmd_step1, cmd_step2], finishFlag=finishFlag)
+

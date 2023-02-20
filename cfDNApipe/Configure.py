@@ -28,6 +28,7 @@ class Configure:
         "data": None,
         "type": "paired",
         "JavaMem": "4G",
+        "FinaleDB": False,
     }
 
     def __init__(self,):
@@ -72,6 +73,8 @@ class Configure:
             Configure.setType(val)
         elif key == "JavaMem":
             Configure.setJavaMem(val)
+        elif key == "FinaleDB":
+            Configure.setFinaleDB(val)
         else:
             cls.__config[key] = val
 
